@@ -995,10 +995,10 @@ console.log(`Wrote ${file}`);
 console.log('Open Keystatic (npm run dev → /keystatic) to write the description.');
 ```
 
-- [ ] **Step 6: Manual verification against a real QID** (requires network)
+- [ ] **Step 6: Live verification against a real QID** (requires network)
 
-Run: `npm run new-album Q190089`
-Expected: prints `Wrote src/content/albums/radiohead-ok-computer.md`; the file's frontmatter has `title: OK Computer`, `artist: Radiohead`, `date: '1997-05-21'`, `mbid`, `spotifyId`, `qid: Q190089`, and a `cover:` path; `public/covers/radiohead-ok-computer.jpg` is a real JPEG. Verify with: `cat src/content/albums/radiohead-ok-computer.md`.
+Run: `npm run new-album Q202996`  (Q202996 = "OK Computer", verified on Wikidata; performer Q44190 = Radiohead)
+Expected: prints `Wrote src/content/albums/radiohead-ok-computer.md` (same slug, so it overwrites the hand-written sample with real Wikidata data). The frontmatter should have `title: OK Computer`, `artist: Radiohead`, `date: '1997-05-21'`, `mbid: b1392450-e666-3926-a536-22c65f834433`, `spotifyId: 2fGCAYUMssLKiUAoNdxGLx`, `qid: Q202996`, `link: https://musicbrainz.org/release-group/b1392450-e666-3926-a536-22c65f834433`, a `cover:` path, and an empty body (the description is written in Keystatic later). `public/covers/radiohead-ok-computer.jpg` should be a real JPEG (downloaded from Cover Art Archive via the mbid). Verify with `cat src/content/albums/radiohead-ok-computer.md` and `file public/covers/radiohead-ok-computer.jpg`.
 
 - [ ] **Step 7: Run the full test suite**
 
