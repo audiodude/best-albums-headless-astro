@@ -1,0 +1,9 @@
+{
+  "labels": { "en": { "language": "en", "value": "OK Computer" } },
+  "claims": {
+    "P436": [{ "mainsnak": { "datavalue": { "value": "b1392450-e666-3926-a536-22c65f834433" } } }],
+    "P2205": [{ "mainsnak": { "datavalue": { "value": "6dVIqQ8qmQ5GBnJ9shOYGE" } } }],
+    "P175": [{ "mainsnak": { "datavalue": { "value": { "id": "Q220059" } } } }],
+    "P577": [{ "mainsnak": { "datavalue": { "value": { "time": "+1997-05-21T00:00:00Z" } } } }]
+  }
+}
