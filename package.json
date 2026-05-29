@@ -2,20 +2,25 @@
   "name": "best-albums-headless-astro",
   "type": "module",
   "version": "0.1.0",
-  "engines": { "node": ">=22.12.0" },
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "astro dev",
     "build": "node scripts/covers-thumbs.mjs && astro build",
-    "preview": "astro preview",
+    "preview": "npm run build && wrangler dev",
     "astro": "astro",
     "test": "node --test",
     "new-album": "node scripts/new-album.mjs",
     "import": "node scripts/import.mjs",
     "covers:thumbs": "node scripts/covers-thumbs.mjs",
     "build:gem": "node scripts/build-gem.mjs",
-    "deploy:gem": "bash scripts/deploy-gem.sh"
+    "deploy:gem": "bash scripts/deploy-gem.sh",
+    "deploy": "npm run build && wrangler deploy",
+    "cf-typegen": "wrangler types"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "12",
     "@astrojs/react": "^4.4.2",
     "@keystatic/astro": "^5.0.6",
     "@keystatic/core": "^0.5.50",
@@ -29,5 +34,8 @@
     "sharp": "^0.34.4",
     "yaml": "^2.8.1",
     "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.95.0"
   }
 }
