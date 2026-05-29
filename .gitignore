@@ -1,0 +1,8 @@
+node_modules/
+dist/
+_gem/
+.astro/
+public/covers/sm/
+scripts/data/
+*.log
+.DS_Store
