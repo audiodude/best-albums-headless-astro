@@ -1,0 +1,19 @@
+<div class="album">
+  <div class="album-small" data-mini-slug="{{mini-slug}}">
+    <img class="art-sm" src="{{photo_url_sm}}">
+  </div>
+  <div class="album-large" style="display: none">
+    <i class="fa fa-times"></i>
+    {{#link}}<a href="{{link}}"><img class="art-lg" src="{{photo_url_lg}}"></a>{{/link}}
+    {{^link}}<img class="art-lg" src="{{photo_url_lg}}">{{/link}}
+
+    <p class="album-artist">{{artist}}</p>
+
+    {{#link}}<p class="album-album"><a href="{{link}}">{{album}}</a></p>{{/link}}
+    {{^link}}<p class="album-album">{{album}}</p>{{/link}}
+
+    {{{html}}}
+
+    <p class="spotify" data-spotify-id="{{spotify_id}}"></p>
+  </div>
+</div>
