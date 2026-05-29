@@ -1168,15 +1168,16 @@ git commit -m "feat: add Gemini rsync deploy script"
 
 ---
 
-## Task 11: GitHub Actions → Cloudflare Pages deploy
+## Task 11: Publish to GitHub + Cloudflare Pages (automated)
 
 **Files:**
 - Create: `.github/workflows/deploy.yml`
 
-> **MANUAL PREREQUISITES (maintainer, before this workflow can succeed):**
-> - Create a Cloudflare Pages project named `best-albums` (Direct Upload / wrangler mode — no CF-side build).
-> - In the GitHub repo settings → Secrets and variables → Actions, add `CLOUDFLARE_API_TOKEN` (Pages:Edit) and `CLOUDFLARE_ACCOUNT_ID`.
-> - Point the `bestalbumsintheuniverse.com` domain at the Pages project (Cloudflare dashboard).
+Fully automated — tokens are in `~/.secrets` (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) and `gh` is authenticated as `audiodude`. This task creates the Cloudflare Pages project, creates the GitHub repo, sets the Actions secrets, and pushes `main` to trigger the first deploy to `*.pages.dev`. The Cloudflare project is named **`best-albums-astro`** (→ `best-albums-astro.pages.dev`); the workflow's `--project-name` must match.
+
+> **Run the outward-facing steps (4–8) from the main session, not a subagent** — they create a public GitHub repo + a Cloudflare project and push code. Confirm repo visibility (default `--public`, matching the existing public `audiodude/best-albums-headless`) before Step 5.
+>
+> **NOT automated — production go-live:** attaching the `bestalbumsintheuniverse.com` custom domain repoints production DNS off the old VPS. That is a separate, explicitly-confirmed cutover after Tasks 13–14 — see the note at the end of this task.
 
 - [ ] **Step 1: Create `.github/workflows/deploy.yml`**
 
@@ -1205,20 +1206,63 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=best-albums
+          command: pages deploy dist --project-name=best-albums-astro
 ```
 
-- [ ] **Step 2: Verify the production build locally excludes Keystatic**
-
-Run: `NODE_ENV=production npm run build`
-Expected: build succeeds; `dist/` contains `albums.json` and no `keystatic` route. Confirm with: `find dist -iname '*keystatic*'` (expected: no output).
-
-- [ ] **Step 3: Commit**
+- [ ] **Step 2: Commit the workflow**
 
 ```bash
 git add .github/workflows/deploy.yml
 git commit -m "ci: deploy static site to Cloudflare Pages on push to main"
 ```
+
+- [ ] **Step 3: Create the Cloudflare Pages project (idempotent)**
+
+```bash
+set -a; . ~/.secrets; set +a
+curl -sS -X POST \
+  "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects" \
+  -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+  -H 'Content-Type: application/json' \
+  --data '{"name":"best-albums-astro","production_branch":"main"}' \
+  -o /tmp/cf-proj.json -w 'HTTP %{http_code}\n'
+node -e "const j=require('/tmp/cf-proj.json');console.log(j.success?('created '+j.result.name):JSON.stringify(j.errors))"
+```
+Expected: `created best-albums-astro`. If it already exists, Cloudflare returns error code `8000007` — fine (idempotent), proceed.
+
+- [ ] **Step 4: Create the GitHub repo (no push yet) and add the remote**
+
+```bash
+gh repo create audiodude/best-albums-headless-astro --public --source=. --remote=origin
+```
+Expected: repo created at `github.com/audiodude/best-albums-headless-astro`; `origin` added locally. (Use `--private` instead if preferred.)
+
+- [ ] **Step 5: Set the Actions secrets (before the first push)**
+
+```bash
+set -a; . ~/.secrets; set +a
+gh secret set CLOUDFLARE_API_TOKEN  --repo audiodude/best-albums-headless-astro --body "$CLOUDFLARE_API_TOKEN"
+gh secret set CLOUDFLARE_ACCOUNT_ID --repo audiodude/best-albums-headless-astro --body "$CLOUDFLARE_ACCOUNT_ID"
+```
+Expected: two `✓ Set ... secret` lines. Setting secrets before pushing avoids a failed first run.
+
+- [ ] **Step 6: Verify the production build excludes Keystatic, then push**
+
+```bash
+NODE_ENV=production npm run build
+find dist -iname '*keystatic*'   # expected: no output
+git push -u origin main
+```
+Expected: build succeeds with `dist/albums.json` and no keystatic route; the push triggers the `Deploy` workflow.
+
+- [ ] **Step 7: Watch the deploy and verify the live site**
+
+```bash
+gh run watch --repo audiodude/best-albums-headless-astro --exit-status
+```
+Expected: workflow succeeds; the site is live at `https://best-albums-astro.pages.dev` serving the front-end + `/albums.json`.
+
+> **MANUAL/CONFIRMED GO-LIVE (separate from this task):** When the `pages.dev` site is verified complete (after Tasks 13–14), attach the `bestalbumsintheuniverse.com` custom domain to the `best-albums-astro` Pages project and repoint Cloudflare DNS off the old VPS. Production cutover — do it only with explicit confirmation. Use 302 (never 301) for any redirects.
 
 ---
 
