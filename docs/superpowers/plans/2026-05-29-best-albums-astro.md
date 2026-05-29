@@ -440,14 +440,24 @@ git commit -m "feat: add fs-based album reader with frontmatter parsing"
 ```js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { coverPaths, toLegacyDict } from '../src/lib/legacy-json.mjs';
+import { toLegacyDict } from '../src/lib/legacy-json.mjs';
 
-test('coverPaths derives sm path under /covers/sm with .jpg', () => {
-  assert.deepEqual(coverPaths('/covers/skin.png'), {
-    lg: '/covers/skin.png',
-    sm: '/covers/sm/skin.jpg',
-  });
-  assert.deepEqual(coverPaths(undefined), { lg: '', sm: '' });
+test('photo_url_sm is slug-keyed regardless of cover path shape', () => {
+  const nested = {
+    slug: 'a-b',
+    body: '',
+    data: { title: 'T', artist: 'A', added: '2024-01-01T00:00:00.000Z', cover: '/covers/a-b/orig.png' },
+  };
+  assert.equal(toLegacyDict(nested, '').photo_url_sm, '/covers/sm/a-b.jpg');
+  assert.equal(toLegacyDict(nested, '').photo_url_lg, '/covers/a-b/orig.png');
+
+  const noCover = {
+    slug: 'x',
+    body: '',
+    data: { title: 'T', artist: 'A', added: '2024-01-01T00:00:00.000Z' },
+  };
+  assert.equal(toLegacyDict(noCover, '').photo_url_sm, '');
+  assert.equal(toLegacyDict(noCover, '').photo_url_lg, '');
 });
 
 test('toLegacyDict produces the exact legacy key shape', () => {
@@ -490,22 +500,19 @@ Expected: FAIL — `Cannot find module '../src/lib/legacy-json.mjs'`.
 ```js
 import { miniSlug } from './slug.mjs';
 
-export function coverPaths(cover) {
-  if (!cover) return { lg: '', sm: '' };
-  const sm = cover.replace('/covers/', '/covers/sm/').replace(/\.[^.]+$/, '.jpg');
-  return { lg: cover, sm };
-}
-
 export function toLegacyDict(album, html) {
   const { data, slug } = album;
-  const { lg, sm } = coverPaths(data.cover);
+  const cover = data.cover ?? '';
   return {
     artist: data.artist,
     album: data.title,
     link: data.link ?? '',
     spotify_id: data.spotifyId ?? '',
-    photo_url_sm: sm,
-    photo_url_lg: lg,
+    // Thumbnail is keyed by slug (covers-thumbs generates /covers/sm/<slug>.jpg),
+    // so it is correct whether the cover path is flat (/covers/<slug>.<ext>, from
+    // the scripts) or nested (/covers/<slug>/<file>, from a Keystatic upload).
+    photo_url_sm: cover ? `/covers/sm/${slug}.jpg` : '',
+    photo_url_lg: cover,
     timestamp: Math.floor(Date.parse(data.added) / 1000),
     slug,
     'mini-slug': miniSlug(slug),
@@ -539,10 +546,11 @@ export async function GET() {
 }
 ```
 
-- [ ] **Step 6: Verify the build emits a correct albums.json**
+- [ ] **Step 6: Verify the endpoint emits a correct albums.json**
 
-Run: `npm run build && cat dist/albums.json | npx json_pp 2>/dev/null || cat dist/albums.json`
-Expected: `dist/albums.json` exists and contains an `albums` array whose single entry has keys `artist, album, link, spotify_id, photo_url_sm, photo_url_lg, timestamp, slug, mini-slug, html`, with `album: "OK Computer"` and `photo_url_sm: "/covers/sm/radiohead-ok-computer.jpg"`. (The `covers-thumbs` prestep will warn/skip the placeholder image — that is expected until Task 6.)
+Run `astro build` directly here — the `npm run build` wrapper's `covers-thumbs` prestep does not exist until Task 6:
+`npx astro build && cat dist/albums.json`
+Expected: `dist/albums.json` exists and contains an `albums` array whose single entry has keys `artist, album, link, spotify_id, photo_url_sm, photo_url_lg, timestamp, slug, mini-slug, html`, with `album: "OK Computer"` and `photo_url_sm: "/covers/sm/radiohead-ok-computer.jpg"`.
 
 - [ ] **Step 7: Commit**
 
@@ -643,36 +651,39 @@ Expected: PASS — 1 test, 0 failures.
 
 - [ ] **Step 5: Create the `covers-thumbs.mjs` script**
 
+Thumbnails are keyed by album **slug** and sourced from each album's actual `cover` path, so this works whether covers are flat (`/covers/<slug>.<ext>`, written by the scripts) or nested (`/covers/<slug>/<file>`, if uploaded via Keystatic — Keystatic scopes uploaded images under a slug subdirectory). Depends on the album reader from Task 4.
+
 `scripts/covers-thumbs.mjs`:
 ```js
-import { readdir, access } from 'node:fs/promises';
-import { join, extname, basename } from 'node:path';
+import { mkdir, access } from 'node:fs/promises';
+import { join } from 'node:path';
+import { readAllAlbums } from '../src/lib/albums.mjs';
 import { resizeThumbnail } from './lib/covers.mjs';
 
-const COVERS_DIR = 'public/covers';
-const THUMBS_DIR = join(COVERS_DIR, 'sm');
+const PUBLIC_DIR = 'public';
+const THUMBS_DIR = 'public/covers/sm';
 const exists = (p) => access(p).then(() => true, () => false);
 
-if (!(await exists(COVERS_DIR))) {
-  console.log('No public/covers directory; nothing to thumbnail.');
-  process.exit(0);
-}
-
-const files = (await readdir(COVERS_DIR)).filter((f) => /\.(jpe?g|png|webp)$/i.test(f));
-const { mkdir } = await import('node:fs/promises');
+const albums = await readAllAlbums();
 await mkdir(THUMBS_DIR, { recursive: true });
 
 let made = 0;
-for (const f of files) {
-  const slug = basename(f, extname(f));
-  const out = join(THUMBS_DIR, `${slug}.jpg`);
+for (const album of albums) {
+  const cover = album.data.cover;
+  if (!cover) continue;
+  const src = join(PUBLIC_DIR, cover.replace(/^\//, '')); // /covers/x.jpg -> public/covers/x.jpg
+  const out = join(THUMBS_DIR, `${album.slug}.jpg`);
+  if (!(await exists(src))) {
+    console.warn(`skip ${album.slug}: missing ${src}`);
+    continue;
+  }
   if (await exists(out)) continue;
   try {
-    await resizeThumbnail(join(COVERS_DIR, f), out);
+    await resizeThumbnail(src, out);
     made++;
-    console.log(`thumb: ${f} -> sm/${slug}.jpg`);
+    console.log(`thumb: ${album.slug}.jpg`);
   } catch (e) {
-    console.warn(`skip ${f}: ${e.message}`);
+    console.warn(`skip ${album.slug}: ${e.message}`);
   }
 }
 console.log(`Generated ${made} thumbnail(s).`);
