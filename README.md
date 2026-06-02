@@ -119,10 +119,13 @@ npm run deploy:gem       # rsync _gem/ to the capsule host
 
 `deploy-gem.sh` sources `.env` for `GEM_USER` / `GEM_HOST` / `GEM_PATH` (or pass them inline). The host
 is reached over SSH via your `~/.ssh/config` (passwordless), and `GEM_PATH` (default
-`/var/gem/best-albums`) must be **writable by `GEM_USER`**. Files are published world-readable for the
-Gemini daemon serving `gem.bestalbumsintheuniverse.com`.
+`/srv/gemini/content/gem.bestalbumsintheuniverse.com`) must be **writable by `GEM_USER`**. Files are
+published world-readable for the [Agate](https://github.com/mbrubeck/agate) daemon serving
+`gem.bestalbumsintheuniverse.com`.
 
-> `admin.bestalbumsintheuniverse.com` is the SSH host for gem deploys — don't remove its DNS record.
+> The capsule is hosted on a Hetzner box, reached via the `gem.bestalbumsintheuniverse.com` SSH alias
+> in `~/.ssh/config` (user `root`, key `id_skynet`). Certs are Let's Encrypt, auto-renewed via
+> Cloudflare DNS-01. (The old `admin.bestalbumsintheuniverse.com` DigitalOcean box is decommissioned.)
 
 ## One-shot production migration
 
