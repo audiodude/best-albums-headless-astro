@@ -12,6 +12,7 @@
     "astro": "astro",
     "test": "node --test",
     "new-album": "node scripts/new-album.mjs",
+    "ghostwrite": "node scripts/ghostwrite.mjs",
     "import": "node scripts/import.mjs",
     "covers:thumbs": "node scripts/covers-thumbs.mjs",
     "build:gem": "node scripts/build-gem.mjs",
@@ -20,6 +21,7 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
     "@astrojs/cloudflare": "12",
     "@astrojs/react": "^4.4.2",
     "@keystatic/astro": "^5.0.6",
@@ -32,8 +34,8 @@
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "sharp": "^0.34.4",
+    "wrangler": "^4.95.0",
     "yaml": "^2.8.1",
-    "zod": "^3.25.0",
-    "wrangler": "^4.95.0"
+    "zod": "^3.25.0"
   }
 }
