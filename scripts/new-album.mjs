@@ -23,13 +23,17 @@ const slug = albumSlug(parsed.artist, parsed.title);
 
 let cover;
 if (parsed.mbid) {
+  const coverUrl = `https://coverartarchive.org/release-group/${parsed.mbid}/front-500`;
   try {
-    cover = await downloadCover(
-      `https://coverartarchive.org/release-group/${parsed.mbid}/front-500`,
-      slug,
-    );
+    cover = await downloadCover(coverUrl, slug);
   } catch (e) {
-    console.warn(`No cover downloaded: ${e.message}`);
+    const causes = [];
+    for (let c = e.cause; c; c = c.cause) {
+      causes.push(c.code ? `${c.code}: ${c.message}` : c.message);
+    }
+    console.warn(
+      `No cover downloaded from ${coverUrl}: ${[e.message, ...causes].join(' — ')}`,
+    );
   }
 }
 

@@ -17,6 +17,7 @@ GEM_PATH="${GEM_PATH:-/srv/gemini/content/gem.bestalbumsintheuniverse.com}"
 npm run build:gem
 # GEM_PATH must be writable by GEM_USER. We don't preserve owner/group/perms
 # (those caused chgrp/permission errors when the dir was owned by another user);
-# --chmod publishes world-readable files for the Gemini daemon.
-rsync -rtz --delete --chmod=D755,F644 _gem/ "$GEM_USER@$GEM_HOST:$GEM_PATH/"
+# --chmod publishes world-readable files for the Gemini daemon. Symbolic modes
+# (= D755,F644) because macOS's openrsync rejects the octal D/F syntax.
+rsync -rtz --delete --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r _gem/ "$GEM_USER@$GEM_HOST:$GEM_PATH/"
 echo "Deployed _gem/ -> $GEM_USER@$GEM_HOST:$GEM_PATH/"
