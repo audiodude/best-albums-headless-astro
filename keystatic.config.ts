@@ -8,7 +8,7 @@ export default config({
       slugField: 'title',
       path: 'src/content/albums/*',
       format: { contentField: 'description' },
-      columns: ['title', 'artist'],
+      columns: ['title', 'artist', 'added'],
       schema: {
         title: fields.slug({ name: { label: 'Title' } }),
         artist: fields.text({ label: 'Artist' }),
