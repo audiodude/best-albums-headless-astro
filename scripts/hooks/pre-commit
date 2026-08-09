@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Warns (never blocks) when a staged album is missing its cover art — the failure
+# mode is invisible until the deployed grid shows a broken image.
+# Enabled via `git config core.hooksPath scripts/hooks`.
+
+warned=0
+
+while IFS= read -r f; do
+  cover=$(git show ":$f" | sed -n "s/^cover: *//p" | head -1 | tr -d "'\"")
+  if [ -z "$cover" ]; then
+    echo "warning: $f has no 'cover:' field — album art will be broken" >&2
+    warned=1
+  elif [ ! -f "public$cover" ]; then
+    echo "warning: $f points at public$cover, which does not exist" >&2
+    warned=1
+  fi
+done < <(git diff --cached --name-only --diff-filter=ACM -- 'src/content/albums/*.md')
+
+[ "$warned" -eq 1 ] && echo "(committing anyway)" >&2
+
+exit 0

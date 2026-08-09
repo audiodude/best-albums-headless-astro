@@ -23,9 +23,13 @@ export function renderAlbumMd(data, body = '') {
   return `---\n${fm}\n---\n${body ? body.trim() + '\n' : ''}`;
 }
 
+export function albumMdPath(slug) {
+  return join(ALBUMS_DIR, `${slug}.md`);
+}
+
 export async function writeAlbumMd(slug, data, body = '') {
   await mkdir(ALBUMS_DIR, { recursive: true });
-  const file = join(ALBUMS_DIR, `${slug}.md`);
+  const file = albumMdPath(slug);
   await writeFile(file, renderAlbumMd(data, body));
   return file;
 }

@@ -74,12 +74,16 @@ The front-end sorts by `timestamp` (descending) client-side.
 - **From a Wikidata QID (the fast path):**
 
   ```sh
-  npm run new-album Q202996      # e.g. OK Computer
+  npm run new-album Q202996              # e.g. OK Computer
+  npm run new-album Q202996 -- --force   # overwrite an album that already exists
   ```
 
   Fetches title / artist / date / MBID / Spotify id / link from Wikidata and downloads the cover from
   the Cover Art Archive, then writes the `.md` with an empty body. Open Keystatic to write the
   description.
+
+  Because it writes an empty body, a re-run would discard the description — so it bails if the album
+  already exists unless you pass `--force`.
 
 - **By hand:** create the entry in Keystatic, or drop a `.md` into `src/content/albums/`.
 
@@ -87,6 +91,15 @@ The front-end sorts by `timestamp` (descending) client-side.
 
 Full covers live in `public/covers/<slug>.<ext>` (committed). Thumbnails (`public/covers/sm/<slug>.jpg`,
 gitignored) are generated at build by `scripts/covers-thumbs.mjs`, keyed by album slug.
+
+An album whose `cover` field is missing renders as a broken image, and nothing catches it before the
+grid is live. Two guards: `new-album` falls back to a cover an earlier run already downloaded (so a
+failed Cover Art Archive fetch can't strip it), and a pre-commit hook warns — without blocking — when
+a staged album has no `cover` or points at a file that isn't there. Enable the hook once per clone:
+
+```sh
+git config core.hooksPath scripts/hooks
+```
 
 ## Building & deploying the web site
 
@@ -166,6 +179,7 @@ src/
   pages/albums.json.js  # emits the legacy-shaped albums.json
 public/                 # vendored front-end (index.html, css, js, tmpl) + covers/
 scripts/                # new-album, import, covers-thumbs, build-gem, deploy-gem, lib/
+scripts/hooks/          # git hooks (opt in with core.hooksPath)
 docs/superpowers/       # the original design spec + implementation plan
 test/                   # node:test suites + fixtures
 ```

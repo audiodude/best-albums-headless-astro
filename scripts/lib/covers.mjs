@@ -1,4 +1,4 @@
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir, access } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 import sharp from 'sharp';
 
@@ -25,6 +25,19 @@ export async function downloadCover(url, slug) {
   const file = join(COVERS_DIR, `${slug}${ext}`);
   await writeFile(file, Buffer.from(await res.arrayBuffer()));
   return `/covers/${slug}${ext}`;
+}
+
+// Returns the public path of an already-downloaded cover for slug, or undefined.
+// Lets a failed re-download fall back to the cover a previous run saved, instead
+// of writing frontmatter with no `cover` field at all.
+export async function existingCover(slug, dir = COVERS_DIR) {
+  for (const ext of ['.jpg', '.png', '.webp']) {
+    try {
+      await access(join(dir, `${slug}${ext}`));
+      return `/covers/${slug}${ext}`;
+    } catch {}
+  }
+  return undefined;
 }
 
 // Writes a <=90x80 (aspect-preserving) JPEG thumbnail of srcPath to outPath.

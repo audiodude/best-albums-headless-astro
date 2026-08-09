@@ -1,11 +1,15 @@
 import { fetchEntity, parseAlbumEntity, artistLabel } from '../src/lib/wikidata.mjs';
 import { albumSlug } from '../src/lib/slug.mjs';
-import { writeAlbumMd } from './lib/album-file.mjs';
-import { downloadCover } from './lib/covers.mjs';
+import { access } from 'node:fs/promises';
+import { writeAlbumMd, albumMdPath } from './lib/album-file.mjs';
+import { downloadCover, existingCover } from './lib/covers.mjs';
 
-const qid = process.argv[2];
+const args = process.argv.slice(2);
+const force = args.includes('--force');
+const qid = args.find((a) => !a.startsWith('-'));
 if (!qid) {
-  console.error('Usage: npm run new-album <QID>   (e.g. npm run new-album Q202996)');
+  console.error('Usage: npm run new-album <QID> [--force]   (e.g. npm run new-album Q202996)');
+  console.error('  --force  overwrite an existing album (discards its description)');
   process.exit(1);
 }
 
@@ -21,6 +25,15 @@ if (!parsed.title || !parsed.artist) {
 
 const slug = albumSlug(parsed.artist, parsed.title);
 
+// A rewrite drops the description body, so never overwrite without being asked.
+if (!force) {
+  try {
+    await access(albumMdPath(slug));
+    console.error(`${albumMdPath(slug)} already exists. Re-run with --force to overwrite it.`);
+    process.exit(1);
+  } catch {}
+}
+
 let cover;
 if (parsed.mbid) {
   const coverUrl = `https://coverartarchive.org/release-group/${parsed.mbid}/front-500`;
@@ -35,6 +48,12 @@ if (parsed.mbid) {
       `No cover downloaded from ${coverUrl}: ${[e.message, ...causes].join(' — ')}`,
     );
   }
+}
+
+// A failed fetch must not strip a cover an earlier run already saved.
+cover ??= await existingCover(slug);
+if (!cover) {
+  console.warn(`No cover for ${slug} — add one in Keystatic or the album art will be broken.`);
 }
 
 const data = {
